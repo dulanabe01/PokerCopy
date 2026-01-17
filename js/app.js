@@ -1297,7 +1297,22 @@ function init() {
 	let dulanHands = document.querySelectorAll(".hole-cards");
 	dulanHands.forEach(function(hand){
 		hand.addEventListener("click", function () {
+
 			const cards = hand.querySelectorAll("img");
+			// if its already faceup, change it backdown
+			if (hand.classList.contains("faceup")) {
+				cards[0].src = "cards/1B.svg"; 
+            	cards[1].src = "cards/1B.svg";
+				hand.classList.add("facedown");
+				hand.classList.remove("faceup");
+       		} else {
+				cards[0].src = `cards/${cards[0].dataset.value}.svg`;
+            	cards[1].src = `cards/${cards[1].dataset.value}.svg`;
+				hand.classList.add("faceup");
+				hand.classList.remove("facedown");
+        }
+
+
 			
 		})
 	})
