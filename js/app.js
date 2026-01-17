@@ -1293,7 +1293,18 @@ function init() {
 	for (const closeButton of closeButtons) {
 		closeButton.addEventListener("click", deletePlayer, false);
 	}
-}
+
+	let dulanHands = document.querySelectorAll(".hole-cards");
+	dulanHands.forEach(function(hand){
+		hand.addEventListener("click", function () {
+			const cards = hand.querySelectorAll("img");
+			
+		})
+	})
+
+	}
+
+
 
 /* --------------------------------------------------------------------------------------------------
 public members, exposed with return statement
