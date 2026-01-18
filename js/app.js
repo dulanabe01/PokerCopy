@@ -280,7 +280,7 @@ function createPlayers() {
 				this.seat.querySelector(`.${role}`).classList.add("hidden");
 			},
 			folded: false,
-			chips: 2000,
+			chips: 1350,
 			allIn: false,
 			totalBet: 0,
 			roundBet: 0,
