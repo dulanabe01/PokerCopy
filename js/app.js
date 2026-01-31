@@ -222,13 +222,20 @@ function startGame(event) {
 
 function createPlayers() {
 	// Auto-fill empty seats with Bots
-	let botIndex = 1;
-	console.log("Hi");
+	let botIndex = 0;
+	const botnames = [
+		"David", 
+		"Arvind",
+		"Ritvik",
+		"Shaun",
+		"Oshen"
+	];
 	for (const seat of document.querySelectorAll(".seat")) {
 		const nameEl = seat.querySelector("h3");
 		if (seat.classList.contains("hidden")) continue;
 		if (nameEl.textContent.trim() === "") {
-			nameEl.textContent = `Bot ${botIndex++}`;
+			nameEl.textContent = botnames[botIndex] ?? `Bot ${botIndex}`;
+			botIndex++;
 			seat.classList.add("bot");
 		}
 	}
