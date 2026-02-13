@@ -3,6 +3,7 @@ Imports
 ---------------------------------------------------------------------------------------------------*/
 import { chooseBotAction, enqueueBotAction } from "./bot.js";
 import { Hand } from "./pokersolver.js";
+import { llmDecision } from "./LLM.js";
 
 /* --------------------------------------------------------------------------------------------------
 Variables
@@ -614,7 +615,7 @@ function startBettingRound() {
 		return players.some((p) => !p.folded && !p.allIn && p.roundBet < currentBet);
 	}
 
-	function nextPlayer() {
+	async function nextPlayer() {
 		// --- GLOBAL GUARD -------------------------------------------------
 		// If no player can act anymore (all folded or all all-in),
 		// the betting round is over and we advance the phase.
@@ -682,7 +683,7 @@ function startBettingRound() {
 			amountSlider.classList.add("hidden");
 			sliderOutput.classList.add("hidden");
 
-			const decision = chooseBotAction(player, {
+			const baseDecision = chooseBotAction(player, {
 				currentBet,
 				pot,
 				smallBlind,
@@ -692,6 +693,18 @@ function startBettingRound() {
 				players,
 				lastRaise,
 			});
+
+			const decision = await llmDecision(player, {
+				currentBet,
+				pot,
+				smallBlind,
+				bigBlind,
+				raisesThisRound,
+				currentPhaseIndex,
+				players,
+				lastRaise,
+			}, baseDecision
+			)
 			const needToCall = currentBet - player.roundBet;
 
 			if (decision.action === "fold") {
