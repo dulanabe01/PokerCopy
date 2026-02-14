@@ -3,7 +3,7 @@ Imports
 ---------------------------------------------------------------------------------------------------*/
 import { chooseBotAction, enqueueBotAction } from "./bot.js";
 import { Hand } from "./pokersolver.js";
-import { llmDecision } from "./LLM.js";
+// import { llmDecision } from "./LLM.js";
 
 /* --------------------------------------------------------------------------------------------------
 Variables
@@ -683,7 +683,7 @@ function startBettingRound() {
 			amountSlider.classList.add("hidden");
 			sliderOutput.classList.add("hidden");
 
-			const baseDecision = chooseBotAction(player, {
+			const decision = chooseBotAction(player, {
 				currentBet,
 				pot,
 				smallBlind,
@@ -693,7 +693,7 @@ function startBettingRound() {
 				players,
 				lastRaise,
 			});
-
+			/*
 			const decision = await llmDecision(player, {
 				currentBet,
 				pot,
@@ -705,6 +705,7 @@ function startBettingRound() {
 				lastRaise,
 			}, baseDecision
 			)
+			*/
 			const needToCall = currentBet - player.roundBet;
 
 			if (decision.action === "fold") {

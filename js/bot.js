@@ -11,8 +11,8 @@ import { Card, Hand } from "./pokersolver.js";
    Configuration
 ========================== */
 // Configuration constants
-// Delay in milliseconds between enqueued bot actions
-export const BOT_ACTION_DELAY = 1500;
+// Increase delay so bots act more slowly (about 5 seconds)
+export const BOT_ACTION_DELAY = 3000;
 
 // Enable verbose logging of bot decisions
 const DEBUG_DECISIONS = false;
@@ -400,10 +400,18 @@ export function chooseBotAction(player, ctx) {
 	const thresholdAdj = activeOpponents < OPPONENT_THRESHOLD
 		? (OPPONENT_THRESHOLD - activeOpponents) * THRESHOLD_FACTOR
 		: 0;
-	let aggressiveness = (preflop ? 0.8 + 0.4 * positionFactor : 1 + 0.6 * positionFactor) +
+	// Much looser preflop behaviour (very wide calling/opening range)
+	let aggressiveness = (preflop ? 0.9 + 0.4 * positionFactor : 0.75 + 0.35 * positionFactor) +
 		oppAggAdj;
-	let raiseThreshold = preflop ? 8 - 2 * positionFactor : Math.max(2, 4 - 2 * positionFactor);
+
+	// Significantly lower preflop raise threshold so weaker hands continue more often
+	let raiseThreshold = preflop ? 5 - 2 * positionFactor : Math.max(2, 4 - 2 * positionFactor);
 	raiseThreshold = Math.max(1, raiseThreshold - thresholdAdj);
+
+	// If there's already been a raise preflop, tighten up hard (reduce 4/5-bets)
+	if (preflop && raisesThisRound >= 1) {
+		raiseThreshold += 1.5; // makes re-raises much rarer
+	}
 
 	if (!preflop) {
 		if (overPair) {
@@ -496,7 +504,8 @@ export function chooseBotAction(player, ctx) {
 		const weight = avgHands < MIN_HANDS_FOR_WEIGHT
 			? 0
 			: 1 - Math.exp(-(avgHands - MIN_HANDS_FOR_WEIGHT) / WEIGHT_GROWTH);
-		bluffChance = Math.min(0.3, foldRate) * weight;
+		// Further reduce bluff frequency for very passive play
+		bluffChance = Math.min(0.03, foldRate) * weight;
 		bluffChance *= 1 - textureRisk * 0.5;
 
 		if (avgVPIP < 0.25) {
@@ -525,10 +534,10 @@ export function chooseBotAction(player, ctx) {
      */
 	let decision;
 
-	// Automatic shove logic when stacks are shallow
-	if (spr <= 1.2 && strengthRatio >= 0.65) {
+	// Much tighter automatic shove logic (avoid punting stacks)
+	if (spr <= 0.8 && strengthRatio >= 0.8) {
 		decision = { action: "raise", amount: player.chips };
-	} else if (preflop && player.chips <= blindLevel.big * 10 && strengthRatio >= 0.75) {
+	} else if (preflop && player.chips <= blindLevel.big * 6 && strengthRatio >= 0.85) {
 		decision = { action: "raise", amount: player.chips };
 	}
 
@@ -552,8 +561,11 @@ export function chooseBotAction(player, ctx) {
 			raiseAmt = Math.max(currentBet + lastRaise, raiseAmt);
 			if (Math.abs(strength - raiseThreshold) <= STRENGTH_TIE_DELTA) {
 				const callAmt = Math.min(player.chips, needToCall);
-				const alt = (strengthRatio * aggressiveness >= potOdds &&
-						stackRatio <= (preflop ? 0.5 : 0.7))
+				const alt = (
+					strengthRatio * aggressiveness >=
+						potOdds * (preflop && raisesThisRound >= 1 ? 1.15 : 1) * (preflop ? 1 : 0.8) &&
+					stackRatio <= (preflop ? 0.6 : 1.0)
+				)
 					? { action: "call", amount: callAmt }
 					: { action: "fold" };
 				decision = Math.random() < 0.5 ? { action: "raise", amount: raiseAmt } : alt;
@@ -561,7 +573,9 @@ export function chooseBotAction(player, ctx) {
 				decision = { action: "raise", amount: raiseAmt };
 			}
 		} else if (
-			strengthRatio * aggressiveness >= potOdds && stackRatio <= (preflop ? 0.5 : 0.7)
+			strengthRatio * aggressiveness >=
+				potOdds * (preflop && raisesThisRound >= 1 ? 1.15 : 1) * (preflop ? 1 : 0.8) &&
+			stackRatio <= (preflop ? 0.6 : 1.0)
 		) {
 			const callAmt = Math.min(player.chips, needToCall);
 			if (Math.abs(strengthRatio * aggressiveness - potOdds) <= ODDS_TIE_DELTA) {
@@ -604,7 +618,13 @@ export function chooseBotAction(player, ctx) {
 		decision.amount = Math.max(decision.amount, overBetSize());
 	}
 
-	if (!preflop && strengthRatio >= 0.9 && decision.action === "raise" && Math.random() < 0.3) {
+	// Heavily encourage slow-playing monster hands (almost always trap)
+	if (!preflop && strengthRatio >= 0.9 && decision.action === "raise" && Math.random() < 0.95) {
+		decision = { action: "check" };
+	}
+
+	// Slow-play strong but not monster hands most of the time
+	if (!preflop && strengthRatio >= 0.85 && decision.action === "raise" && Math.random() < 0.7) {
 		decision = { action: "check" };
 	}
 
