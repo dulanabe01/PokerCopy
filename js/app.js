@@ -3,7 +3,7 @@ Imports
 ---------------------------------------------------------------------------------------------------*/
 import { chooseBotAction, enqueueBotAction } from "./bot.js";
 import { Hand } from "./pokersolver.js";
-// import { llmDecision } from "./LLM.js";
+import { llmDecision } from "./LLM.js";
 
 /* --------------------------------------------------------------------------------------------------
 Variables
@@ -30,6 +30,7 @@ const MAX_ITEMS = 8;
 const notifArr = [];
 const pendingNotif = [];
 let isNotifProcessing = false;
+const actionHistory = { preflop: [], flop: [], turn: [], river: [], showdown: [] };
 const NOTIF_INTERVAL = 750;
 const HISTORY_LOG = false; // Set to true to enable history logging in the console
 const DEBUG_FLOW = false; // Set to true for verbose game-flow logging
@@ -87,6 +88,22 @@ Array.prototype.shuffle = function () {
 
 function logHistory(msg) {
 	if (HISTORY_LOG) console.log(msg);
+}
+
+function resetActionHistory() {
+	actionHistory.preflop.length = 0;
+	actionHistory.flop.length = 0;
+	actionHistory.turn.length = 0;
+	actionHistory.river.length = 0;
+	actionHistory.showdown.length = 0;
+}
+
+function currentStreetKey(Phases, currentPhaseIndex) {
+	const phase = Phases[currentPhaseIndex] ?? "preflop";
+	if (phase === "flop" || phase === "turn" || phase === "river" || phase === "showdown") {
+		return phase;
+	}
+	return "preflop";
 }
 
 function logFlow(msg, data) {
@@ -351,9 +368,6 @@ function setDealer() {
 		players[nextIndex].assignRole("dealer");
 	}
 
-	while (players[0].dealer === false) {
-		players.unshift(players.pop());
-	}
 
 	enqueueNotification(`${players[0].name} is Dealer.`);
 }
@@ -375,9 +389,9 @@ function setBlinds() {
 		p.clearRole("small-blind");
 		p.clearRole("big-blind");
 	});
-	// Post blinds for Pre-Flop and set currentBet
-	const sbIdx = (players.length > 2) ? 1 : 0;
-	const bbIdx = (players.length > 2) ? 2 : 1;
+	// Post blinds for Pre-Flop and set currentBet (fixed BB = 2nd player)
+	const bbIdx = Math.min(1, players.length - 1); // always 2nd seat if possible
+	const sbIdx = Math.max(bbIdx - 1, 0);           // seat before BB
 
 	const sbBet = players[sbIdx].placeBet(smallBlind);
 	const bbBet = players[bbIdx].placeBet(bigBlind);
@@ -424,6 +438,7 @@ function preFlop() {
 	totalHands++;
 	// Reset phase to preflop
 	currentPhaseIndex = 0;
+	resetActionHistory();
 
 	startButton.classList.add("hidden");
 
@@ -683,7 +698,7 @@ function startBettingRound() {
 			amountSlider.classList.add("hidden");
 			sliderOutput.classList.add("hidden");
 
-			const decision = chooseBotAction(player, {
+			const ctx = {
 				currentBet,
 				pot,
 				smallBlind,
@@ -692,20 +707,18 @@ function startBettingRound() {
 				currentPhaseIndex,
 				players,
 				lastRaise,
-			});
-			/*
-			const decision = await llmDecision(player, {
-				currentBet,
-				pot,
-				smallBlind,
-				bigBlind,
-				raisesThisRound,
-				currentPhaseIndex,
-				players,
-				lastRaise,
-			}, baseDecision
-			)
-			*/
+				historyByStreet: actionHistory,
+				recentHistory: notifArr.slice(0, MAX_ITEMS),
+			};
+
+			const baseDecision = chooseBotAction(player, ctx);
+			console.log(
+				"DEBUG ctx.historyByStreet",
+				typeof structuredClone === "function" ? structuredClone(ctx.historyByStreet) : ctx.historyByStreet,
+			);
+
+			const decision = await llmDecision(player, ctx, baseDecision);
+
 			const needToCall = currentBet - player.roundBet;
 
 			if (decision.action === "fold") {
@@ -1275,6 +1288,8 @@ function notifyPlayerAction(player, action = "", amount = 0) {
 }
 
 function enqueueNotification(msg) {
+	const street = currentStreetKey(Phases, currentPhaseIndex);
+	actionHistory[street].push(msg);
 	pendingNotif.push(msg);
 	if (!isNotifProcessing) {
 		showNextNotif();
