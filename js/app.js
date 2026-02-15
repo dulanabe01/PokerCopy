@@ -3,7 +3,7 @@ Imports
 ---------------------------------------------------------------------------------------------------*/
 import { chooseBotAction, enqueueBotAction } from "./bot.js";
 import { Hand } from "./pokersolver.js";
-import { llmDecision } from "./LLM.js";
+// import { llmDecision } from "./LLM.js";
 
 /* --------------------------------------------------------------------------------------------------
 Variables
@@ -711,13 +711,13 @@ function startBettingRound() {
 				recentHistory: notifArr.slice(0, MAX_ITEMS),
 			};
 
-			const baseDecision = chooseBotAction(player, ctx);
+			const decision = chooseBotAction(player, ctx);
 			console.log(
 				"DEBUG ctx.historyByStreet",
 				typeof structuredClone === "function" ? structuredClone(ctx.historyByStreet) : ctx.historyByStreet,
 			);
 
-			const decision = await llmDecision(player, ctx, baseDecision);
+			// const decision = await llmDecision(player, ctx, baseDecision);
 
 			const needToCall = currentBet - player.roundBet;
 

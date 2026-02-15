@@ -1,3 +1,4 @@
+/*
 export async function llmDecision(player, ctx, baseDecision = null) {
   // --- Unpack hole cards like bot.js does ---
   const holeCards = player?.cards
@@ -49,3 +50,5 @@ export async function llmDecision(player, ctx, baseDecision = null) {
 
   return decision;
 }
+
+*/
