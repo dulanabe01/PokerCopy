@@ -350,26 +350,21 @@ function createPlayers() {
 }
 
 function setDealer() {
-	const isNotDealer = (currentValue) => currentValue.dealer === false;
-	if (players.every(isNotDealer)) {
-		const randomPlayerIndex = Math.floor(Math.random() * players.length);
-		players[randomPlayerIndex].dealer = true;
-		players[randomPlayerIndex].assignRole("dealer");
-		initialDealerName = players[randomPlayerIndex].name;
-	} else {
-		const dealerIndex = players.findIndex((p) => p.dealer);
-		// clear current dealer flag
-		players[dealerIndex].dealer = false;
-		players[dealerIndex].clearRole("dealer");
+	// Clear dealer flag and badge from all players
+	players.forEach((p) => {
+		if (p.dealer) {
+			p.dealer = false;
+			p.clearRole("dealer");
+		}
+	});
 
-		// assign new dealer – wrap with modulo to avoid “undefined”
-		const nextIndex = (dealerIndex + 1) % players.length;
-		players[nextIndex].dealer = true;
-		players[nextIndex].assignRole("dealer");
+	// Always set seat 0 as dealer (debug mode)
+	if (players.length > 0) {
+		players[0].dealer = true;
+		players[0].assignRole("dealer");
+		initialDealerName = players[0].name;
+		enqueueNotification(`${players[0].name} is Dealer.`);
 	}
-
-
-	enqueueNotification(`${players[0].name} is Dealer.`);
 }
 
 function setBlinds() {
@@ -389,9 +384,12 @@ function setBlinds() {
 		p.clearRole("small-blind");
 		p.clearRole("big-blind");
 	});
-	// Post blinds for Pre-Flop and set currentBet (fixed BB = 2nd player)
-	const bbIdx = Math.min(1, players.length - 1); // always 2nd seat if possible
-	const sbIdx = Math.max(bbIdx - 1, 0);           // seat before BB
+	// Fixed debug mapping:
+	// Seat 0 = Dealer
+	// Seat 1 = Small Blind
+	// Seat 2 = Big Blind
+	const sbIdx = players.length > 1 ? 1 : 0;
+	const bbIdx = players.length > 2 ? 2 : sbIdx;
 
 	const sbBet = players[sbIdx].placeBet(smallBlind);
 	const bbBet = players[bbIdx].placeBet(bigBlind);
@@ -439,6 +437,8 @@ function preFlop() {
 	// Reset phase to preflop
 	currentPhaseIndex = 0;
 	resetActionHistory();
+	// Ensure players array matches visual seat order
+	players.sort((a, b) => a.seatIndex - b.seatIndex);
 
 	startButton.classList.add("hidden");
 
